@@ -45,6 +45,37 @@ def get_soil_data(lat, lon):
         "soil_map_unit": row[1]
     }
 
+def get_nwi_data(lat, lon):
+
+    url = (
+        "https://fwspublicservices.wim.usgs.gov/wetlandsmapservice/rest/services/Wetlands/MapServer/0/query"
+    )
+
+    params = {
+        "geometry": f"{lon},{lat}",
+        "geometryType": "esriGeometryPoint",
+        "inSR": "4326",
+        "spatialRel": "esriSpatialRelIntersects",
+        "outFields": "*",
+        "f": "json"
+    }
+
+    response = requests.get(url, params=params)
+
+    data = response.json()
+
+    features = data.get("features", [])
+
+    if not features:
+        return None
+
+    attrs = features[0]["attributes"]
+
+    return {
+        "nwi_code": attrs.get("ATTRIBUTE"),
+        "wetland_type": attrs.get("WETLAND_TYPE")
+    }
+
 @app.get("/lookup")
 def lookup(lat: float, lon: float):
 
@@ -68,6 +99,7 @@ def lookup(lat: float, lon: float):
             return str(v)
 
     soil = get_soil_data(lat, lon)
+    nwi = get_nwi_data(lat, lon)
 
     return {
         "found": True,
@@ -75,6 +107,9 @@ def lookup(lat: float, lon: float):
         "lrr": clean(row.get("LRRSYM")),
 
         "soil_symbol": soil["soil_symbol"] if soil else None,
-        "soil_map_unit": soil["soil_map_unit"] if soil else None
+        "soil_map_unit": soil["soil_map_unit"] if soil else None,
+
+        "nwi_code": nwi["nwi_code"] if nwi else None,
+        "wetland_type": nwi["wetland_type"] if nwi else None
     }
 
