@@ -47,34 +47,44 @@ def get_soil_data(lat, lon):
 
 def get_nwi_data(lat, lon):
 
-    url = (
-        "https://fwspublicservices.wim.usgs.gov/wetlandsmapservice/rest/services/Wetlands/MapServer/0/query"
-    )
+    try:
 
-    params = {
-        "geometry": f"{lon},{lat}",
-        "geometryType": "esriGeometryPoint",
-        "inSR": "4326",
-        "spatialRel": "esriSpatialRelIntersects",
-        "outFields": "*",
-        "f": "json"
-    }
+        url = (
+            "https://services1.arcgis.com/hp2w17nTD8iK4wC2/ArcGIS/rest/services/Wetlands/FeatureServer/0/query"
+        )
 
-    response = requests.get(url, params=params)
+        params = {
+            "geometry": f"{lon},{lat}",
+            "geometryType": "esriGeometryPoint",
+            "inSR": "4326",
+            "spatialRel": "esriSpatialRelIntersects",
+            "outFields": "*",
+            "returnGeometry": "false",
+            "f": "json"
+        }
 
-    data = response.json()
+        response = requests.get(url, params=params)
 
-    features = data.get("features", [])
+        print("RAW NWI RESPONSE:")
+        print(response.text)
 
-    if not features:
+        data = response.json()
+
+        features = data.get("features", [])
+
+        if not features:
+            return None
+
+        attrs = features[0].get("attributes", {})
+
+        return {
+            "nwi_code": attrs.get("ATTRIBUTE"),
+            "wetland_type": attrs.get("WETLAND_TYPE")
+        }
+
+    except Exception as e:
+        print("NWI ERROR:", e)
         return None
-
-    attrs = features[0]["attributes"]
-
-    return {
-        "nwi_code": attrs.get("ATTRIBUTE"),
-        "wetland_type": attrs.get("WETLAND_TYPE")
-    }
 
 @app.get("/lookup")
 def lookup(lat: float, lon: float):
